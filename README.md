@@ -6,4 +6,4 @@
  **NOTE: Issues you might encounter**
 1. The CLIP model takes batch size as number of classes, so make sure you have **Balanced Batch Sampler** if your number of classes are less than or equal to batch size.
 2. Make sure your dataset is clean and there are no leakages of one class data onto the other, This will hinder the model's training progress.
- 
+3. The .txt files here are for a proof that using **Balanced Batch Sampler** definitely changes the game
