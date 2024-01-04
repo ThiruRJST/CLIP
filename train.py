@@ -10,10 +10,13 @@ import torch.optim as optim
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
+
+logger = SummaryWriter(log_dir="tensorboard_logs")
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-LABELS = ["Provide your labels"]
+LABELS = ["bags", "car", "electronics", "food", "furniture", "graphic", "human", "plants"]
 device = "cuda:0" if torch.cuda.is_available() else "cpu" # If using GPU then use mixed precision training.
 model, preprocess = clip.load("ViT-B/32",device=device,jit=False) #Must set jit=False for training
 
@@ -93,14 +96,22 @@ if __name__ == "__main__":
     train_captions = train_df.caption.values.tolist()
     train_labels = train_df.category.values.tolist()
 
+
+    test_image_paths = test_df.paths.values.tolist()
+    test_captions = test_df.caption.values.tolist()
+    test_labels = test_df.category.values.tolist()
+
+
     print("Creating Pytorch Dataset")
     train_dataset = TomAndJerryDataset(images=train_image_paths, labels=train_labels, captions=train_captions)
-    # test_dataset = ProductDataset(xtest, ytest)
+    test_dataset = TomAndJerryDataset(images=test_image_paths, labels=test_labels, captions=test_captions)
 
     print("Loading Custom made Sampler")
     train_sampler = BalancedBatchSampler(train_labels, 8, 1)
+    test_sampler = BalancedBatchSampler(test_labels, 8, 1)
+
     train_loader = DataLoader(train_dataset, pin_memory=True, batch_sampler=train_sampler)
-    # test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, pin_memory=True)
+    test_loader = DataLoader(test_dataset, pin_memory=True, batch_sampler=test_sampler)
 
     print("Loading Loss Functions")
     train_loss_img = nn.CrossEntropyLoss()
@@ -124,10 +135,11 @@ if __name__ == "__main__":
         run_train_loss = 0.0
         run_image_loss = 0.0
         run_text_loss = 0.0
+        best_model = float('-inf')
 
         print(f"Epoch:{epoch}/5")
         model.train()
-        for idx, batch in enumerate(train_loader):
+        for idx, batch in tqdm(enumerate(train_loader), total=len(train_loader)):
             
             optimizer.zero_grad()
 
@@ -136,7 +148,7 @@ if __name__ == "__main__":
             images= images.to(device)
             captions = captions.to(device)
             captions = captions.squeeze(1)
-            # print(images.shape, captions.shape)
+
             logits_per_image, logits_per_text = model(images, captions)
 
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
@@ -150,25 +162,36 @@ if __name__ == "__main__":
             run_image_loss += image_loss.item()
             run_text_loss += text_loss.item()
 
-            if idx % 100 == 0:
-                print(f"Step_image_loss:{image_loss.item()}, Step_text_loss:{text_loss.item()}, Train Step Loss: {total_loss.item()}")
-
-        print(f"Epoch_image_loss: {run_image_loss / len(train_loader)}, Epoch_text_loss: {run_test_loss/len(train_loader)},Train Epoch Loss: {run_train_loss / len(train_loader)}")
-        # result_df.loc[epoch, "train_epoch_loss"] = run_train_loss / len(train_loader)
         
-        # model.eval()
-        # for idx, test_batch in test_loader:
+        train_epoch_loss = run_train_loss / len(train_loader)
+        train_epoch_image = run_image_loss / len(train_loader)
+        train_epoch_text = run_test_loss / len(train_loader)
 
-        #     image, texts = batch
-        #     images= images.to(device)
-        #     texts = texts.to(device)
+        logger.add_scalar(tag="Loss/Train_Epoch", scalar_value=train_epoch_loss, global_step=epoch)
+        logger.add_scalar(tag="Loss/Train_Epoch_Image", scalar_value=train_epoch_image, global_step=epoch)
+        logger.add_scalar(tag="Loss/Train_Epoch_Text", scalar_value=train_epoch_text, global_step=epoch)
 
-        #     logits_per_image, logits_per_text = model(images, texts)
-
-        #     ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
-
-        #     total_test_loss = (test_loss_img(logits_per_image,ground_truth) + test_loss_txt(logits_per_text,ground_truth))/2
-        #     run_test_loss += total_test_loss.item()
-        # result_df.loc[epoch, "test_epoch_loss"] = run_test_loss / len(test_loader)
+        print(f"Epoch_image_loss: {train_epoch_image}, Epoch_text_loss: {train_epoch_text},Train Epoch Loss: {train_epoch_loss}")
         
-        # result_df.to_csv("results.csv", index=False)
+        model.eval()
+        for idx, test_batch in tqdm(enumerate(test_loader)):
+
+            image, texts, labels = batch
+            images= images.to(device)
+            texts = texts.to(device)
+            texts = texts.squeeze(1)
+
+            logits_per_image, logits_per_text = model(images, texts)
+
+            ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
+
+            total_test_loss = (test_loss_img(logits_per_image,ground_truth) + test_loss_txt(logits_per_text,ground_truth))/2
+            run_test_loss += total_test_loss.item()
+        
+        val_epoch_loss = run_test_loss / len(DataLoader)
+        logger.add_scalar(tag="Loss/Val_Epoch", scalar_value=val_epoch_loss, global_step=epoch)
+        if val_epoch_loss < best_model:
+            print(f"Model improved in performance: {best_model} -> {val_epoch_loss}")
+            print("Saving Model")
+            torch.save(model, f"models_v1/clip-finetune-epoch:{epoch}-loss:{val_epoch_loss:.4f}")
+
