@@ -1,0 +1,24 @@
+(/home/tensorthiru/CLIP/.conda) tensorthiru@SOngBIrd:~/CLIP$ python3 train.py 
+Data Engineering
+Creating Pytorch Dataset
+Loading Custom made Sampler
+Loading Loss Functions
+Started Training....
+Epoch:0/5
+Step_image_loss:0.455078125, Step_text_loss:0.91357421875, Train Step Loss: 0.6845703125
+Step_image_loss:0.433837890625, Step_text_loss:0.58935546875, Train Step Loss: 0.51171875
+Step_image_loss:0.56298828125, Step_text_loss:0.80908203125, Train Step Loss: 0.68603515625
+Step_image_loss:0.85498046875, Step_text_loss:0.927734375, Train Step Loss: 0.8916015625
+Step_image_loss:0.354248046875, Step_text_loss:0.779296875, Train Step Loss: 0.56689453125
+Step_image_loss:0.34375, Step_text_loss:0.426025390625, Train Step Loss: 0.384765625
+Step_image_loss:0.259521484375, Step_text_loss:0.5224609375, Train Step Loss: 0.39111328125
+Step_image_loss:0.265625, Step_text_loss:0.36376953125, Train Step Loss: 0.314697265625
+Step_image_loss:1.0966796875, Step_text_loss:1.6484375, Train Step Loss: 1.373046875
+Step_image_loss:0.11480712890625, Step_text_loss:0.263427734375, Train Step Loss: 0.1890869140625
+Step_image_loss:0.52392578125, Step_text_loss:0.71484375, Train Step Loss: 0.619140625
+Step_image_loss:0.4443359375, Step_text_loss:0.693359375, Train Step Loss: 0.56884765625
+Step_image_loss:0.5478515625, Step_text_loss:0.806640625, Train Step Loss: 0.67724609375
+Step_image_loss:0.62109375, Step_text_loss:0.6494140625, Train Step Loss: 0.63525390625
+
+
+
